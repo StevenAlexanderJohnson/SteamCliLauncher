@@ -6,7 +6,7 @@ pub async fn launch_menu(config: &Config) {
     loop {
         println!("What would you like to do?\n");
 
-        println!("G: Get List of games you can launch.");
+        println!("G: Get List of games you can launch");
         println!("Q: Quit");
         print!("Enter command: ");
 
@@ -23,6 +23,8 @@ pub async fn launch_menu(config: &Config) {
 }
 
 pub async fn prompt_launch_game(config: &Config) -> Result<(), anyhow::Error> {
+    println!("\nWhat game would you like to launch?");
+    print!("App Id: ");
     let _ = io::stdout().flush();
     let mut app_id = String::new();
     io::stdin().read_line(&mut app_id).unwrap();
@@ -34,8 +36,9 @@ pub async fn prompt_launch_game(config: &Config) -> Result<(), anyhow::Error> {
 pub async fn print_game_menu(config: &Config) {
     loop {
         println!("\nWhat would you like to do with games?\n");
-        println!("L: List games that you have played and own.");
-        println!("B: Back to home menu.");
+        println!("L: List games that you have played and own");
+        println!("S: Start a game");
+        println!("B: Back to home menu");
         print!("Enter command: ");
 
         let _ = io::stdout().flush();
@@ -47,7 +50,7 @@ pub async fn print_game_menu(config: &Config) {
                 Err(e) => println!("An error occurred while getting your games: {}", e),
             },
             "S" | "s" => match prompt_launch_game(&config).await {
-                Ok(_) => continue,
+                Ok(_) => break,
                 Err(err) => println!("{}", err),
             },
             _ => break,
