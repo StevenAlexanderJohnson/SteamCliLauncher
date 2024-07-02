@@ -16,6 +16,7 @@ pub trait ConfigWrapper {
     fn set_api_key(&self, api_key: &str) -> Result<(), anyhow::Error>;
     fn add_executable_path(&self, path: &str) -> Result<(), anyhow::Error>;
     fn set_user_id(&self, user_id: &str) -> Result<(), anyhow::Error>;
+    fn initialize_setup(&self) -> Result<(), anyhow::Error>;
 }
 
 pub struct Config {
@@ -61,7 +62,7 @@ impl ConfigWrapper for Config {
                     println!("Configuration is ready.");
                 }
                 State::Done => {
-                    initialize_setup(&config)?;
+                    config.initialize_setup()?;
                 }
             }
         }
@@ -74,7 +75,7 @@ impl ConfigWrapper for Config {
 
         match command.next()? {
             State::Row => Ok(command.read::<String, _>("value")?),
-            State::Done => Err(anyhow!("Unable to find your api_key in the database."))
+            State::Done => Err(anyhow!("Unable to find your api_key in the database.")),
         }
     }
 
@@ -96,12 +97,13 @@ impl ConfigWrapper for Config {
 
         match command.next()? {
             State::Row => Ok(command.read::<String, _>("value")?),
-            State::Done => Err(anyhow!("Unable to find your user_id in the database."))
+            State::Done => Err(anyhow!("Unable to find your user_id in the database.")),
         }
     }
 
     fn set_api_key(&self, api_key: &str) -> Result<(), anyhow::Error> {
-        let query = "INSERT INTO application_data (type, value) VALUES ('api_key', :api_key)";
+        let query =
+            "INSERT OR REPLACE INTO application_data (type, value) VALUES ('api_key', :api_key)";
         let mut command = self.connection.prepare(query).unwrap();
         command.bind((":api_key", api_key)).unwrap();
 
@@ -125,7 +127,8 @@ impl ConfigWrapper for Config {
     }
 
     fn set_user_id(&self, user_id: &str) -> Result<(), anyhow::Error> {
-        let query = "INSERT INTO application_data (type, value) values ('user_id', :user_id)";
+        let query =
+            "INSERT OR REPLACE INTO application_data (type, value) values ('user_id', :user_id)";
         let mut command = self.connection.prepare(query).unwrap();
         command.bind((":user_id", user_id)).unwrap();
 
@@ -135,18 +138,17 @@ impl ConfigWrapper for Config {
 
         Ok(())
     }
-}
 
-fn initialize_setup(config: &Config) -> Result<(), anyhow::Error> {
-    let default_steam_path = match env::consts::OS {
-        "linux" => "~/.local/share/Steam",
-        "windows" => "C:\\Program Files (x86)\\Steam\\steam.exe",
-        "macos" => "~/Library/Application Support (this is hidden to users by default)",
-        _ => "a folder on your machine, why aren't you using a normal OS?",
-    };
+    fn initialize_setup(&self) -> Result<(), anyhow::Error> {
+        let default_steam_path = match env::consts::OS {
+            "linux" => "~/.local/share/Steam",
+            "windows" => "C:\\Program Files (x86)\\Steam\\steam.exe",
+            "macos" => "~/Library/Application Support (this is hidden to users by default)",
+            _ => "a folder on your machine, why aren't you using a normal OS?",
+        };
 
-    println!(
-        r#"
+        println!(
+            r#"
     _       ____    __     ____
      )  ____)  /  __) \   |    
     (  (___   |  /     |  |    
@@ -154,40 +156,41 @@ fn initialize_setup(config: &Config) -> Result<(), anyhow::Error> {
      ____)  ) |  \__   |  |__  
     (      (___\    )_/      )_
     "#
-    );
+        );
 
-    println!("It seems like this is the first time you're launching Steam CLI Launcher!");
-    println!("Before moving forward there is some configuration we have to do to make the CLI work as expected.\n");
+        println!("It seems like this is the first time you're launching Steam CLI Launcher!");
+        println!("Before moving forward there is some configuration we have to do to make the CLI work as expected.\n");
 
-    println!("First things first, provide the path to your Steam executable.");
-    println!("This is usually in {}.", default_steam_path);
-    print!("Path: ");
+        println!("First things first, provide the path to your Steam executable.");
+        println!("This is usually in {}.", default_steam_path);
+        print!("Path: ");
 
-    let _ = io::stdout().flush();
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    config.add_executable_path(&input)?;
+        let _ = io::stdout().flush();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        self.add_executable_path(&input)?;
 
-    println!("\nIn order for the CLI tool to work, it also requires a Steam API Key.");
-    println!("This is used to collect what games you own, and to look up the AppID of the game you want to launch.");
-    print!("API Key: ");
+        println!("\nIn order for the CLI tool to work, it also requires a Steam API Key.");
+        println!("This is used to collect what games you own, and to look up the AppID of the game you want to launch.");
+        print!("API Key: ");
 
-    let _ = io::stdout().flush();
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    config.set_api_key(&input)?;
+        let _ = io::stdout().flush();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        self.set_api_key(&input)?;
 
-    println!("\nYour Steam ID is also required for the CLI to work.");
-    println!("This can be found on your account page in Steam.");
-    print!("Steam ID: ");
+        println!("\nYour Steam ID is also required for the CLI to work.");
+        println!("This can be found on your account page in Steam.");
+        print!("Steam ID: ");
 
-    let _ = io::stdout().flush();
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    config.set_user_id(&input)?;
+        let _ = io::stdout().flush();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        self.set_user_id(&input)?;
 
-    println!("\n");
-    Ok(())
+        println!("\n");
+        Ok(())
+    }
 }
 
 #[cfg(test)]
