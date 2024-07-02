@@ -61,7 +61,6 @@ impl ConfigWrapper for Config {
                     println!("Configuration is ready.");
                 }
                 State::Done => {
-                    println!("INTILIZING SETUP");
                     initialize_setup(&config)?;
                 }
             }
