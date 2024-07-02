@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::SteamInfo;
+use crate::config3::{Config, ConfigWrapper};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInfo {
@@ -17,11 +17,11 @@ pub struct Game {
     pub playtime_forever: i32,
 }
 
-pub async fn get_user_games(api: &SteamInfo) -> Result<Vec<Game>, anyhow::Error> {
+pub async fn get_user_games(config: &Config) -> Result<Vec<Game>, anyhow::Error> {
     let response = reqwest::get(
         format!("https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={}&steamid={}&include_appinfo=true&include_played_free_games=true&format=json", 
-        api.api_key, 
-        api.user_id
+        config.get_api_key()?,
+        config.get_user_id()?
     ))
         .await
         .map_err(|err| anyhow!(format!("Request failed.:\n\t{:?}", err)))?
@@ -51,10 +51,11 @@ pub async fn get_user_games(api: &SteamInfo) -> Result<Vec<Game>, anyhow::Error>
     Ok(output)
 }
 
-pub async fn get_player_info(steam: &SteamInfo) -> Result<PlayerInfo, anyhow::Error> {
+pub async fn get_player_info(config: &Config) -> Result<PlayerInfo, anyhow::Error> {
     let response = reqwest::get(format!(
         "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}",
-        steam.api_key, steam.user_id
+        config.get_api_key()?,
+        config.get_user_id()?
     ))
     .await
     .map_err(|err| anyhow!(format!("Request failed.:\n\t{:?}", err)))?

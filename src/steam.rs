@@ -1,18 +1,19 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 
-use crate::SteamInfo;
 use std::process::Command;
 
-pub fn launch_game(steam_info: &SteamInfo, app_id: &str) -> Result<(), anyhow::Error> {
-    let mut command = Command::new(&steam_info.steam_exe_path)
-        .arg("-applaunch")
-        .arg(app_id)
-        .spawn()
-        .map_err(|err| anyhow!("An error occurred while starting your game. {}", err))?;
+use crate::config3::{Config, ConfigWrapper};
 
-    let result = command
-        .wait()
-        .map_err(|err| anyhow!("Starting game exited with error: {}", err))?;
-    println!("Your game has launched with status: {}", result);
-    Ok(())
+pub fn launch_game(config: &Config, app_id: &str) -> Result<(), anyhow::Error> {
+    let exe_paths = config.get_executable_paths()?;
+    for path in exe_paths {
+        if let Ok(mut command) = Command::new(path).arg("-applaunch").arg(app_id).spawn() {
+            let result = command
+                .wait()
+                .context("Your game was found but was not able to be launched.")?;
+            println!("Your game has launched with status: {}", result);
+            return Ok(());
+        }
+    }
+    Err(anyhow!("Unable to start your game. It could be that it is not installed in any of the registered Steam Libraries."))
 }
