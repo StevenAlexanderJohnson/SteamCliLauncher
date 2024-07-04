@@ -1,8 +1,8 @@
 use std::io::{self, Write};
 
-use crate::{api_methods, config3::Config, steam};
+use crate::{api_methods::SteamAPIHandler, config3::Config, steam};
 
-pub async fn launch_menu(config: &Config) {
+pub async fn launch_menu<T: SteamAPIHandler>(config: &Config, steam_api: &T) {
     loop {
         println!("What would you like to do?\n");
 
@@ -14,7 +14,7 @@ pub async fn launch_menu(config: &Config) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         match input.trim() {
-            "G" | "g" => print_game_menu(config).await,
+            "G" | "g" => print_game_menu(config, steam_api).await,
             "Q" | "q" => break,
             "clear" => println!("{}[2J", 27 as char),
             _ => println!("That is an unrecognized input."),
@@ -33,7 +33,7 @@ pub async fn prompt_launch_game(config: &Config) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub async fn print_game_menu(config: &Config) {
+pub async fn print_game_menu<T: SteamAPIHandler>(config: &Config, steam_api: &T) {
     loop {
         println!("\nWhat would you like to do with games?\n");
         println!("L: List games that you have played and own");
@@ -45,7 +45,7 @@ pub async fn print_game_menu(config: &Config) {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         match input.trim() {
-            "L" | "l" => match api_methods::get_user_games(config).await {
+            "L" | "l" => match steam_api.get_user_games(config).await {
                 Ok(x) => x.iter().for_each(|x| println!("{} ({})", x.name, x.appid)),
                 Err(e) => println!("An error occurred while getting your games: {}", e),
             },
